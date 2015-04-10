@@ -31,6 +31,8 @@ using System.Security;
 using System.Web.Http.Controllers;
 using System.Web.Http.Filters;
 using System.Net.Http;
+using System.Threading;
+using System.Threading.Tasks;
 using Autofac.Features.Metadata;
 
 namespace Autofac.Integration.WebApi
@@ -38,16 +40,18 @@ namespace Autofac.Integration.WebApi
     /// <summary>
     /// Resolves a filter for the specified metadata for each controller request.
     /// </summary>
-    [SecurityCritical]
     [SuppressMessage("Microsoft.Performance", "CA1813:AvoidUnsealedAttributes", Justification = "Derived attribute adds filter override support")]
+    [SuppressMessage("Microsoft.Security", "CA2146:TypesMustBeAtLeastAsCriticalAsBaseTypesFxCopRule")]
     internal class ActionFilterWrapper : ActionFilterAttribute, IAutofacActionFilter, IFilterWrapper
     {
+        [SuppressMessage("Microsoft.Security", "CA2151:FieldsWithCriticalTypesShouldBeCriticalFxCopRule")]
         readonly FilterMetadata _filterMetadata;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="ActionFilterWrapper"/> class.
         /// </summary>
         /// <param name="filterMetadata">The filter metadata.</param>
+        [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Security", "CA2140:TransparentMethodsMustNotReferenceCriticalCodeFxCopRule")]
         public ActionFilterWrapper(FilterMetadata filterMetadata)
         {
             if (filterMetadata == null) throw new ArgumentNullException("filterMetadata");
@@ -68,11 +72,13 @@ namespace Autofac.Integration.WebApi
         /// Occurs before the action method is invoked.
         /// </summary>
         /// <param name="actionContext">The context for the action.</param>
+        /// <param name="cancellationToken">The cancellation token assigned for this task.</param>
         /// <exception cref="System.ArgumentNullException">
         /// Thrown if <paramref name="actionContext" /> is <see langword="null" />.
         /// </exception>
-        [SecurityCritical]
-        public override void OnActionExecuting(HttpActionContext actionContext)
+        [SuppressMessage("Microsoft.Security", "CA2140:TransparentMethodsMustNotReferenceCriticalCodeFxCopRule")]
+        [SuppressMessage("Microsoft.Security", "CA2134:MethodsMustOverrideWithConsistentTransparencyFxCopRule")]
+        public override async Task OnActionExecutingAsync(HttpActionContext actionContext, CancellationToken cancellationToken)
         {
             if (actionContext == null)
             {
@@ -84,18 +90,20 @@ namespace Autofac.Integration.WebApi
             var filters = lifetimeScope.Resolve<IEnumerable<Meta<Lazy<IAutofacActionFilter>>>>();
 
             foreach (var filter in filters.Where(FilterMatchesMetadata))
-                filter.Value.Value.OnActionExecuting(actionContext);
+                await filter.Value.Value.OnActionExecutingAsync(actionContext, cancellationToken);
         }
 
         /// <summary>
         /// Occurs after the action method is invoked.
         /// </summary>
         /// <param name="actionExecutedContext">The context for the action.</param>
+        /// <param name="cancellationToken">The cancellation token assigned for this task.</param>
         /// <exception cref="System.ArgumentNullException">
         /// Thrown if <paramref name="actionExecutedContext" /> is <see langword="null" />.
         /// </exception>
-        [SecurityCritical]
-        public override void OnActionExecuted(HttpActionExecutedContext actionExecutedContext)
+        [SuppressMessage("Microsoft.Security", "CA2140:TransparentMethodsMustNotReferenceCriticalCodeFxCopRule")]
+        [SuppressMessage("Microsoft.Security", "CA2134:MethodsMustOverrideWithConsistentTransparencyFxCopRule")]
+        public override async Task OnActionExecutedAsync(HttpActionExecutedContext actionExecutedContext, CancellationToken cancellationToken)
         {
             if (actionExecutedContext == null)
             {
@@ -107,12 +115,13 @@ namespace Autofac.Integration.WebApi
             var filters = lifetimeScope.Resolve<IEnumerable<Meta<Lazy<IAutofacActionFilter>>>>();
 
             foreach (var filter in filters.Where(FilterMatchesMetadata))
-                filter.Value.Value.OnActionExecuted(actionExecutedContext);
+                await filter.Value.Value.OnActionExecutedAsync(actionExecutedContext, cancellationToken);
         }
 
+        [SuppressMessage("Microsoft.Security", "CA2140:TransparentMethodsMustNotReferenceCriticalCodeFxCopRule")]
         bool FilterMatchesMetadata(Meta<Lazy<IAutofacActionFilter>> filter)
         {
-            var metadata = filter.Metadata.ContainsKey(MetadataKey) 
+            var metadata = filter.Metadata.ContainsKey(MetadataKey)
                 ? filter.Metadata[MetadataKey] as FilterMetadata : null;
 
             return metadata != null

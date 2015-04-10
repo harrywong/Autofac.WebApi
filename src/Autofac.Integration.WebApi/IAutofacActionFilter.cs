@@ -23,7 +23,9 @@
 // FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
 // OTHER DEALINGS IN THE SOFTWARE.
 
-using System.Security;
+using System.Diagnostics.CodeAnalysis;
+using System.Threading;
+using System.Threading.Tasks;
 using System.Web.Http.Controllers;
 using System.Web.Http.Filters;
 
@@ -32,19 +34,22 @@ namespace Autofac.Integration.WebApi
     /// <summary>
     /// An action filter that will be created for each controller request.
     /// </summary>
-    [SecurityCritical]
     public interface IAutofacActionFilter
     {
         /// <summary>
         /// Occurs before the action method is invoked.
         /// </summary>
         /// <param name="actionContext">The context for the action.</param>
-        void OnActionExecuting(HttpActionContext actionContext);
+        /// <param name="cancellationToken">The cancellation token assigned for this task.</param>
+        [SuppressMessage("Microsoft.Security", "CA2140:TransparentMethodsMustNotReferenceCriticalCodeFxCopRule")]
+        Task OnActionExecutingAsync(HttpActionContext actionContext, CancellationToken cancellationToken);
 
         /// <summary>
         /// Occurs after the action method is invoked.
         /// </summary>
         /// <param name="actionExecutedContext">The context for the action.</param>
-        void OnActionExecuted(HttpActionExecutedContext actionExecutedContext);
+        /// <param name="cancellationToken">The cancellation token assigned for this task.</param>
+        [SuppressMessage("Microsoft.Security", "CA2140:TransparentMethodsMustNotReferenceCriticalCodeFxCopRule")]
+        Task OnActionExecutedAsync(HttpActionExecutedContext actionExecutedContext, CancellationToken cancellationToken);
     }
 }
